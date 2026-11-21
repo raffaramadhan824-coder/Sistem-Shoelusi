@@ -81,9 +81,9 @@ Namespace Shoelusi
         Private Sub SaveMaterial(previousCode As String, fields As String())
             Dim code = RequireCode(fields(0), "BB")
             Dim name = RequireText(fields(1), "nama bahan baku")
-            Dim quantity = DecimalText(RequireAmount(fields(2), "stok", True))
+            Dim quantity = RequireAmount(fields(2), "stok", True)
             Dim unit = RequireText(fields(3), "satuan")
-            Dim minimum = DecimalText(RequireAmount(fields(4), "stok minimum", True))
+            Dim minimum = RequireAmount(fields(4), "stok minimum", True)
             Dim category = RequireText(fields(5), "jenis bahan")
             Dim referencePrice = RequireAmount(fields(6), "harga acuan", True)
             Dim updatedOn = DateText(DateTime.Today)
@@ -94,11 +94,11 @@ Namespace Shoelusi
                                {name, unit, minimum, category, referencePrice}, transaction)
                     Dim changed = ExecuteInTransaction(transaction,
                         "UPDATE Data_Persediaan SET Jumlah_Stok_Bahan_Baku = ?, Tanggal_Update_Stok = ? WHERE Kode_Bahan_Baku = ?",
-                        quantity, updatedOn, code)
+                        quantity, DateTime.Today, code)
                     If changed = 0 Then
                         SaveRecord(Stock, "Kode_Persediaan", Nothing, "ST" & code.Substring(2),
                                    {"Kode_Bahan_Baku", "Jumlah_Stok_Bahan_Baku", "Tanggal_Update_Stok"},
-                                   {code, quantity, updatedOn}, transaction)
+                                   {code, quantity, DateTime.Today}, transaction)
                     End If
                     transaction.Commit()
                 End Using
@@ -171,19 +171,19 @@ Namespace Shoelusi
                 price = CDec(material.Rows(0)("Harga_Acuan"))
             End If
 
-            Dim subtotal = DecimalText(quantity * price)
-            Dim minimum = Convert.ToString(material.Rows(0)("Stok_Minimum"))
+            Dim subtotal = quantity * price
+            Dim minimum = If(material.Rows(0).IsNull("Stok_Minimum"), 0D, Convert.ToDecimal(material.Rows(0)("Stok_Minimum")))
 
             If previousCode Is Nothing Then
                 SaveRecord(Purchases, "Kode_Pengadaan", Nothing, code,
                            {"Tanggal_Pengadaan", "Kode_Bahan_Baku", "Jumlah_Pembelian", "Harga_Satuan", "Subtotal_Pembelian", "Status_Pengadaan", "No_ID", "Stok_Minimum"},
-                           {purchaseDate, materialCode, DecimalText(quantity), DecimalText(price), subtotal, "Menunggu", activeAccountId, minimum})
+                           {RequireDate(fields(1)), materialCode, quantity, price, subtotal, "Menunggu", activeAccountId, minimum})
                 Return
             End If
 
             Dim changed = ExecuteChange(
                 "UPDATE Data_Pengadaan_Bahan_Baku SET Tanggal_Pengadaan = ?, Kode_Bahan_Baku = ?, Jumlah_Pembelian = ?, Harga_Satuan = ?, Subtotal_Pembelian = ?, Stok_Minimum = ? WHERE Kode_Pengadaan = ? AND Status_Pengadaan = ?",
-                purchaseDate, materialCode, DecimalText(quantity), DecimalText(price), subtotal, minimum, code, "Menunggu")
+                RequireDate(fields(1)), materialCode, quantity, price, subtotal, minimum, code, "Menunggu")
 
             If changed <> 1 Then
                 Throw New ArgumentException("Rincian hanya dapat diubah saat status pengadaan Menunggu.")
