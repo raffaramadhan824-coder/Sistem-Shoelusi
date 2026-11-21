@@ -137,7 +137,7 @@ Namespace Shoelusi
 
         Private Sub SavePurchase(previousCode As String, fields As String())
             Dim code = RequireCode(fields(0), "PB")
-            Dim purchaseDate = DateText(RequireDate(fields(1)))
+            Dim purchaseDate = RequireDate(fields(1))
             Dim materialCode = RequireCode(fields(2), "BB")
             Dim quantity = RequireAmount(fields(3), "jumlah pembelian")
             Dim requestedStatus = fields(4).Trim()
@@ -177,13 +177,13 @@ Namespace Shoelusi
             If previousCode Is Nothing Then
                 SaveRecord(Purchases, "Kode_Pengadaan", Nothing, code,
                            {"Tanggal_Pengadaan", "Kode_Bahan_Baku", "Jumlah_Pembelian", "Harga_Satuan", "Subtotal_Pembelian", "Status_Pengadaan", "No_ID", "Stok_Minimum"},
-                           {RequireDate(fields(1)), materialCode, quantity, price, subtotal, "Menunggu", activeAccountId, minimum})
+                           {purchaseDate, materialCode, quantity, price, subtotal, "Menunggu", activeAccountId, minimum})
                 Return
             End If
 
             Dim changed = ExecuteChange(
                 "UPDATE Data_Pengadaan_Bahan_Baku SET Tanggal_Pengadaan = ?, Kode_Bahan_Baku = ?, Jumlah_Pembelian = ?, Harga_Satuan = ?, Subtotal_Pembelian = ?, Stok_Minimum = ? WHERE Kode_Pengadaan = ? AND Status_Pengadaan = ?",
-                RequireDate(fields(1)), materialCode, quantity, price, subtotal, minimum, code, "Menunggu")
+                purchaseDate, materialCode, quantity, price, subtotal, minimum, code, "Menunggu")
 
             If changed <> 1 Then
                 Throw New ArgumentException("Rincian hanya dapat diubah saat status pengadaan Menunggu.")
