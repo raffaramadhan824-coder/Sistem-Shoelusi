@@ -61,14 +61,14 @@ Namespace Shoelusi
             "FROM Data_Pengerjaan AS j LEFT JOIN [Data Akun] AS a ON j.No_ID = a.No_ID ORDER BY j.Kode_Pengerjaan"
 
         Friend Const SelectEoq As String =
-            "SELECT b.Nama_Bahan_Baku, p.Permintaan_Tahunan, p.Biaya_Pemesanan, p.Biaya_Penyimpanan, p.Nilai_EOQ, p.Kode_Pengadaan " &
-            "FROM Data_Pengadaan_Bahan_Baku AS p INNER JOIN Data_Bahan_Baku AS b ON p.Kode_Bahan_Baku = b.Kode_Bahan_Baku " &
-            "ORDER BY p.Kode_Pengadaan"
+            "SELECT b.Nama_Bahan_Baku, s.Permintaan_Tahunan, s.Biaya_Pemesanan, s.Biaya_Penyimpanan, s.Nilai_EOQ, s.Kode_Bahan_Baku " &
+            "FROM Data_Persediaan AS s INNER JOIN Data_Bahan_Baku AS b ON s.Kode_Bahan_Baku = b.Kode_Bahan_Baku " &
+            "ORDER BY s.Kode_Bahan_Baku"
 
         Friend Const SelectRop As String =
-            "SELECT b.Nama_Bahan_Baku, p.Permintaan_Harian, p.Permintaan_Harian_Maksimum, p.Lead_Time, p.Lead_Time_Maksimum, p.Safety_Stock, p.Nilai_ROP, p.Kode_Pengadaan " &
-            "FROM Data_Pengadaan_Bahan_Baku AS p INNER JOIN Data_Bahan_Baku AS b ON p.Kode_Bahan_Baku = b.Kode_Bahan_Baku " &
-            "ORDER BY p.Kode_Pengadaan"
+            "SELECT b.Nama_Bahan_Baku, s.Permintaan_Harian, s.Permintaan_Harian_Maksimum, s.Lead_Time, s.Lead_Time_Maksimum, s.Safety_Stock, s.Nilai_ROP, s.Kode_Bahan_Baku " &
+            "FROM Data_Persediaan AS s INNER JOIN Data_Bahan_Baku AS b ON s.Kode_Bahan_Baku = b.Kode_Bahan_Baku " &
+            "ORDER BY s.Kode_Bahan_Baku"
 
         Friend Function RequireCode(value As String, prefix As String) As String
             Dim normalized = value.Trim().ToUpperInvariant()
