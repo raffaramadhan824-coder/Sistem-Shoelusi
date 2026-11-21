@@ -143,8 +143,8 @@ Namespace Shoelusi
                     Dim value = row(index)
                     If TypeOf value Is DateTime Then
                         value = CDate(value).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
-                    ElseIf TypeOf value Is Decimal Then
-                        value = CDec(value).ToString("0.####", CultureInfo.InvariantCulture)
+                    ElseIf TypeOf value Is Decimal OrElse TypeOf value Is Double OrElse TypeOf value Is Single Then
+                        value = Convert.ToDouble(value).ToString("0.####", CultureInfo.InvariantCulture)
                     ElseIf Convert.IsDBNull(value) Then
                         value = Nothing
                     End If
