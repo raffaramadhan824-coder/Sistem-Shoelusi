@@ -51,6 +51,10 @@ Harga dan perhitungan
   disimpan pada satu baris Data_Persediaan untuk setiap Kode_Bahan_Baku.
   EOQ memakai permintaan tahunan, biaya pemesanan, dan biaya penyimpanan.
   ROP memakai pemakaian harian, lead time, dan safety stock.
+- Kolom parameter pada Data_Persediaan: Biaya_Pemesanan, Biaya_Penyimpanan,
+  Permintaan_Tahunan, Nilai_EOQ, Permintaan_Harian,
+  Permintaan_Harian_Maksimum, Lead_Time, Lead_Time_Maksimum,
+  Safety_Stock, dan Nilai_ROP.
 - Pengadaan baru berstatus Menunggu dan harus disetujui Pemilik. Saat Gudang
   mengubah status Disetujui menjadi Diterima, jumlah pembelian otomatis
   ditambahkan ke saldo Data_Persediaan. Penerimaan tidak dilakukan dua kali.
