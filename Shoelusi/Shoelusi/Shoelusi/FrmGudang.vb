@@ -86,7 +86,6 @@ Namespace Shoelusi
             Dim minimum = RequireAmount(fields(4), "stok minimum", True)
             Dim category = RequireText(fields(5), "jenis bahan")
             Dim referencePrice = RequireAmount(fields(6), "harga acuan", True)
-            Dim updatedOn = DateText(DateTime.Today)
             Using connection = GetConnection()
                 Using transaction = connection.BeginTransaction()
                     SaveRecord(Materials, "Kode_Bahan_Baku", previousCode, code,
