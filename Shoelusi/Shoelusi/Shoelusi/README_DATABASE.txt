@@ -25,8 +25,8 @@ menggunakan asumsi untuk demonstrasi. Status dan tanggal pengerjaan awal juga
 menggunakan asumsi.
 
 Sumber tampilan
-- Gudang: Persediaan menggunakan Data_Bahan_Baku dan Data_Persediaan.
-  Pengadaan dan riwayat EOQ/ROP menggunakan Data_Pengadaan_Bahan_Baku.
+- Gudang: Persediaan dan parameter EOQ/ROP menggunakan Data_Persediaan.
+  Riwayat pengadaan menggunakan Data_Pengadaan_Bahan_Baku.
   Cek Penggunaan dan Cek Penjualan memakai tabel transaksi masing-masing.
 - Kasir: Pemesanan, Penjualan, Layanan, dan Pengerjaan bersumber dari Access.
 - Teknisi: Cek Pesanan, Pengerjaan, dan Penggunaan Bahan Baku memakai Access.
@@ -47,12 +47,15 @@ Harga dan perhitungan
   subtotal terisi otomatis. Harga pada transaksi lama dipertahankan.
 - Penjualan: isi kode pesanan dan jumlah sepatu (pasang). Total mengikuti
   tarif layanan per pasang. Tarif transaksi lama dipertahankan.
-- EOQ dan ROP: pilih baris pengadaan agar aplikasi memuat parameter yang
-  tersedia dan menghitung otomatis. Klik Simpan untuk menyimpan hasil.
-  Jika data pendukung belum lengkap, isi parameter yang tersedia terlebih
-  dahulu. ROP bisa menggunakan safety stock yang sudah tercatat.
-- Pengadaan baru berstatus Menunggu. Gudang dapat menandai pengadaan yang
-  disetujui sebagai Diterima. Saldo aktual disesuaikan di tab Persediaan.
+- EOQ dan ROP: pilih bahan baku pada daftar perhitungan. Parameter dan hasil
+  disimpan pada satu baris Data_Persediaan untuk setiap Kode_Bahan_Baku.
+  EOQ memakai permintaan tahunan, biaya pemesanan, dan biaya penyimpanan.
+  ROP memakai pemakaian harian, lead time, dan safety stock.
+- Pengadaan baru berstatus Menunggu dan harus disetujui Pemilik. Saat Gudang
+  mengubah status Disetujui menjadi Diterima, jumlah pembelian otomatis
+  ditambahkan ke saldo Data_Persediaan. Penerimaan tidak dilakukan dua kali.
+- Saat Teknisi menambah pemakaian bahan, stok otomatis berkurang. Saat catatan
+  pemakaian diubah atau dihapus, saldo stok disesuaikan dalam transaksi database.
 
 Harga bahan baku di bawah ini adalah estimasi acuan dalam rupiah per satuan
 database, dibulatkan dari contoh penawaran publik dan dapat diedit di Persediaan.
