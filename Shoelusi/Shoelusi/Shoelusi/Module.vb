@@ -122,6 +122,17 @@ Namespace Shoelusi
             End Using
         End Function
 
+        Friend Function ReadRowsInTransaction(transaction As OleDbTransaction, sql As String, ParamArray values As Object()) As DataTable
+            Dim rows As New DataTable()
+            Using cmd As New OleDbCommand(sql, transaction.Connection, transaction)
+                AddParameters(cmd, values)
+                Using adapter As New OleDbDataAdapter(cmd)
+                    adapter.Fill(rows)
+                End Using
+            End Using
+            Return rows
+        End Function
+
         Public Sub LoadGrid(grid As DataGridView, sql As String, Optional columnPositions As Integer() = Nothing, Optional keyColumn As Integer = 0)
             Dim table As DataTable = ReadRows(sql)
             grid.Rows.Clear()
