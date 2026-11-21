@@ -369,7 +369,7 @@ Namespace Shoelusi
 
         Private Sub SaveCalculation(title As String, save As Func(Of Integer))
             Try
-                If save() <> 1 Then Throw New InvalidOperationException("Pengadaan yang dipilih sudah tidak tersedia.")
+                If save() <> 1 Then Throw New InvalidOperationException("Data persediaan bahan baku yang dipilih sudah tidak tersedia.")
             Catch ex As Exception
                 MessageBox.Show("Gagal menyimpan perhitungan. " & ex.Message, title)
                 Return
