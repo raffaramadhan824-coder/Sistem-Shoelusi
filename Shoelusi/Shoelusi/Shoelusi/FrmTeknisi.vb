@@ -1,4 +1,5 @@
 ﻿Imports System
+Imports System.Globalization
 Imports System.Windows.Forms
 
 Namespace Shoelusi
