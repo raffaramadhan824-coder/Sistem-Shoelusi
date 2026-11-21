@@ -29,7 +29,7 @@ Namespace Shoelusi
                      AddressOf ReloadData, AddressOf SaveJob, Sub(code) DeleteRecord(Jobs, "Kode_Pengerjaan", code))
             BindCrud(dgvPenggunaanBB, New Control() {dtpPenggunaanTanggal, txtPenggunaanPengerjaan, txtPenggunaanKode, txtPenggunaanNama, txtPenggunaanJumlah, txtPenggunaanSatuan},
                      btnTambahPenggunaanBB, btnUbahPenggunaanBB, btnHapusPenggunaanBB, btnBersihkanPenggunaanBB, "Penggunaan Bahan Baku",
-                     AddressOf ReloadData, AddressOf SaveUsage, Sub(code) DeleteRecord(MaterialUse, "Kode_Penggunaan", code))
+                     AddressOf ReloadData, AddressOf SaveUsage, AddressOf DeleteUsage)
             AddHandler btnLaporkanBB.Click, AddressOf ReportUsage
         End Sub
 
@@ -62,25 +62,143 @@ Namespace Shoelusi
         End Sub
 
         Private Sub SaveUsage(previousCode As String, fields As String())
-            Dim usageDate = DateText(RequireDate(fields(0)))
+            Dim usageDate = RequireDate(fields(0))
             Dim jobCode = RequireCode(fields(1), "PG")
             Dim materialCode = RequireCode(fields(2), "BB")
-            Dim quantity = DecimalText(RequireAmount(fields(4), "jumlah pemakaian"))
-            If previousCode Is Nothing Then
-                Dim code = "PU" & Guid.NewGuid().ToString("N").Substring(0, 12).ToUpperInvariant()
-                SaveRecord(MaterialUse, "Kode_Penggunaan", Nothing, code,
-                           {"Tanggal_Penggunaan", "Kode_Pengerjaan", "Kode_Bahan_Baku", "Jumlah_Penggunaan", "No_ID", "Kondisi_Bahan_Baku"},
-                           {usageDate, jobCode, materialCode, quantity, activeAccountId, "Normal"})
-            Else
-                Dim previous = ReadRows("SELECT Kode_Pengerjaan FROM Data_Penggunaan_Bahan_Baku WHERE Kode_Penggunaan = ?", previousCode)
-                If previous.Rows.Count = 0 Then Throw New InvalidOperationException("Data pemakaian sudah tidak tersedia.")
-                Dim resetSale = If(String.Equals(Convert.ToString(previous.Rows(0)(0)), jobCode, StringComparison.OrdinalIgnoreCase),
-                                   "", ", Kode_Penjualan = NULL")
-                Dim changed = ExecuteChange("UPDATE Data_Penggunaan_Bahan_Baku SET Tanggal_Penggunaan = ?, " &
-                                            "Kode_Pengerjaan = ?, Kode_Bahan_Baku = ?, Jumlah_Penggunaan = ?" & resetSale & " WHERE Kode_Penggunaan = ?",
-                                            usageDate, jobCode, materialCode, quantity, previousCode)
-                If changed <> 1 Then Throw New InvalidOperationException("Data pemakaian sudah tidak tersedia.")
-            End If
+            Dim quantity = RequireAmount(fields(4), "jumlah pemakaian")
+            Dim previousMaterial As String = Nothing
+            Dim previousQuantity As Decimal = 0D
+            Dim previousJob As String = Nothing
+
+            Using connection = GetConnection()
+                Using transaction = connection.BeginTransaction()
+                    If previousCode IsNot Nothing Then
+                        Dim previous = ReadRowsInTransaction(
+                            transaction,
+                            "SELECT Kode_Bahan_Baku, Jumlah_Penggunaan, Kode_Pengerjaan FROM Data_Penggunaan_Bahan_Baku WHERE Kode_Penggunaan = ?",
+                            previousCode)
+
+                        If previous.Rows.Count <> 1 Then
+                            Throw New InvalidOperationException("Data pemakaian sudah tidak tersedia.")
+                        End If
+
+                        previousMaterial = Convert.ToString(previous.Rows(0)("Kode_Bahan_Baku"))
+                        previousQuantity = Convert.ToDecimal(previous.Rows(0)("Jumlah_Penggunaan"))
+                        previousJob = Convert.ToString(previous.Rows(0)("Kode_Pengerjaan"))
+                    End If
+
+                    Dim newMaterialStock = ReadRowsInTransaction(
+                        transaction,
+                        "SELECT Jumlah_Stok_Bahan_Baku FROM Data_Persediaan WHERE Kode_Bahan_Baku = ?",
+                        materialCode)
+
+                    If newMaterialStock.Rows.Count <> 1 Then
+                        Throw New ArgumentException("Data persediaan untuk bahan " & materialCode & " belum tersedia.")
+                    End If
+
+                    Dim currentNewStock = Convert.ToDecimal(newMaterialStock.Rows(0)(0))
+                    Dim resultingNewStock As Decimal
+
+                    If previousCode IsNot Nothing AndAlso
+                       String.Equals(previousMaterial, materialCode, StringComparison.OrdinalIgnoreCase) Then
+                        resultingNewStock = currentNewStock + previousQuantity - quantity
+                    Else
+                        resultingNewStock = currentNewStock - quantity
+                    End If
+
+                    If resultingNewStock < 0D Then
+                        Throw New ArgumentException("Stok bahan " & materialCode & " tidak mencukupi. Stok tersedia: " &
+                                                    currentNewStock.ToString(CultureInfo.InvariantCulture))
+                    End If
+
+                    If previousCode IsNot Nothing AndAlso
+                       Not String.Equals(previousMaterial, materialCode, StringComparison.OrdinalIgnoreCase) Then
+                        Dim oldMaterialStock = ReadRowsInTransaction(
+                            transaction,
+                            "SELECT Jumlah_Stok_Bahan_Baku FROM Data_Persediaan WHERE Kode_Bahan_Baku = ?",
+                            previousMaterial)
+
+                        If oldMaterialStock.Rows.Count <> 1 Then
+                            Throw New InvalidOperationException("Data persediaan bahan lama tidak ditemukan.")
+                        End If
+
+                        Dim returnedStock = Convert.ToDecimal(oldMaterialStock.Rows(0)(0)) + previousQuantity
+                        If ExecuteInTransaction(
+                            transaction,
+                            "UPDATE Data_Persediaan SET Jumlah_Stok_Bahan_Baku = ?, Tanggal_Update_Stok = ? WHERE Kode_Bahan_Baku = ?",
+                            returnedStock, DateTime.Today, previousMaterial) <> 1 Then
+                            Throw New InvalidOperationException("Stok bahan sebelumnya gagal dikembalikan.")
+                        End If
+                    End If
+
+                    Dim changed As Integer
+
+                    If previousCode Is Nothing Then
+                        Dim usageCode = "PU" & Guid.NewGuid().ToString("N").Substring(0, 12).ToUpperInvariant()
+                        SaveRecord(MaterialUse, "Kode_Penggunaan", Nothing, usageCode,
+                                   {"Tanggal_Penggunaan", "Kode_Pengerjaan", "Kode_Bahan_Baku", "Jumlah_Penggunaan", "No_ID", "Kondisi_Bahan_Baku"},
+                                   {usageDate, jobCode, materialCode, quantity, activeAccountId, "Normal"}, transaction)
+                    Else
+                        Dim resetSale = If(String.Equals(previousJob, jobCode, StringComparison.OrdinalIgnoreCase),
+                                           "", ", Kode_Penjualan = NULL")
+                        changed = ExecuteInTransaction(
+                            transaction,
+                            "UPDATE Data_Penggunaan_Bahan_Baku SET Tanggal_Penggunaan = ?, Kode_Pengerjaan = ?, Kode_Bahan_Baku = ?, Jumlah_Penggunaan = ?" &
+                            resetSale & " WHERE Kode_Penggunaan = ?",
+                            usageDate, jobCode, materialCode, quantity, previousCode)
+
+                        If changed <> 1 Then
+                            Throw New InvalidOperationException("Data pemakaian gagal diperbarui.")
+                        End If
+                    End If
+
+                    If ExecuteInTransaction(
+                        transaction,
+                        "UPDATE Data_Persediaan SET Jumlah_Stok_Bahan_Baku = ?, Tanggal_Update_Stok = ? WHERE Kode_Bahan_Baku = ?",
+                        resultingNewStock, DateTime.Today, materialCode) <> 1 Then
+                        Throw New InvalidOperationException("Stok bahan baku gagal diperbarui.")
+                    End If
+
+                    transaction.Commit()
+                End Using
+            End Using
+        End Sub
+
+        Private Sub DeleteUsage(code As String)
+            Using connection = GetConnection()
+                Using transaction = connection.BeginTransaction()
+                    Dim usage = ReadRowsInTransaction(
+                        transaction,
+                        "SELECT Kode_Bahan_Baku, Jumlah_Penggunaan FROM Data_Penggunaan_Bahan_Baku WHERE Kode_Penggunaan = ?",
+                        code)
+
+                    If usage.Rows.Count <> 1 Then
+                        Throw New InvalidOperationException("Data pemakaian sudah tidak tersedia.")
+                    End If
+
+                    Dim materialCode = Convert.ToString(usage.Rows(0)("Kode_Bahan_Baku"))
+                    Dim quantity = Convert.ToDecimal(usage.Rows(0)("Jumlah_Penggunaan"))
+                    Dim changed = ExecuteInTransaction(
+                        transaction,
+                        "UPDATE Data_Persediaan SET Jumlah_Stok_Bahan_Baku = Jumlah_Stok_Bahan_Baku + ?, Tanggal_Update_Stok = ? WHERE Kode_Bahan_Baku = ?",
+                        quantity, DateTime.Today, materialCode)
+
+                    If changed <> 1 Then
+                        Throw New InvalidOperationException("Stok bahan baku tidak dapat dikembalikan.")
+                    End If
+
+                    changed = ExecuteInTransaction(
+                        transaction,
+                        "DELETE FROM Data_Penggunaan_Bahan_Baku WHERE Kode_Penggunaan = ?",
+                        code)
+
+                    If changed <> 1 Then
+                        Throw New InvalidOperationException("Data pemakaian gagal dihapus.")
+                    End If
+
+                    transaction.Commit()
+                End Using
+            End Using
         End Sub
 
         Private Sub ReportUsage(sender As Object, e As EventArgs)
